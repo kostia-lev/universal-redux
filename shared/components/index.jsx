@@ -1,4 +1,7 @@
 import React from 'react';
+import Link from 'react-router';
+import Home from 'components/Home';
+
 export default class AppView extends React.Component {
     render() {
         return (

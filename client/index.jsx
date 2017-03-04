@@ -3,11 +3,12 @@ import { render }  from 'react-dom';
 import { Router }  from 'react-router';
 import createBrowserHistory from 'history/lib/createBrowserHistory';
 import routes      from 'routes';
-const history = createBrowserHistory();
-import { createStore, combineReducers } from 'redux';
+import { createStore, combineReducers, applyMiddleware } from 'redux';
 import { Provider }                     from 'react-redux';
+import promiseMiddleware   from 'lib/promiseMiddleware';
 import * as reducers                    from 'reducers';
 import { fromJS }                       from 'immutable';
+
 const history = createBrowserHistory();
 let initialState = window.__INITIAL_STATE__;
 // Transform into Immutable.js collections,
@@ -18,7 +19,7 @@ Object
         initialState[key] = fromJS(initialState[key]);
     });
 const reducer = combineReducers(reducers);
-const store   = createStore(reducer, initialState);
+const store = applyMiddleware(promiseMiddleware)(createStore)(reducer, initialState);
 render(
     <Provider store={store}>
         <Router children={routes} history={history} />

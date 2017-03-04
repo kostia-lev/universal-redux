@@ -5,13 +5,16 @@ import { RoutingContext, match } from 'react-router';
 import createLocation            from 'history/lib/createLocation';
 import routes                    from 'routes';
 const app = express();
-import { createStore, combineReducers } from 'redux';
+import { createStore, combineReducers, applyMiddleware } from 'redux';
+import promiseMiddleware from './shared/lib/promiseMiddleware';
 import { Provider }                     from 'react-redux';
 import * as reducers                    from 'reducers';
+import fetchComponentData from './shared/lib/fetchComponentData';
+
 app.use((req, res) => {
     const location = createLocation(req.url);
     const reducer  = combineReducers(reducers);
-    const store    = createStore(reducer);
+    const store = applyMiddleware(promiseMiddleware)(createStore)(reducer);
 
     match({ routes, location }, (err, redirectLocation, renderProps) => {
         if (err) {
@@ -20,17 +23,19 @@ app.use((req, res) => {
         }
         if (!renderProps) return res.status(404).end('Not found.');
 
-        const InitialComponent = (
-            <Provider store={store}>
-                <RoutingContext {...renderProps} />
-            </Provider>
-        );
-        const componentHTML = renderToString(InitialComponent);
-        const HTML = `<!DOCTYPE html>
+        function renderView(){
+            const InitialComponent = (
+                <Provider store={store}>
+                    <RoutingContext {...renderProps} />
+                </Provider>
+            );
+            const initialState = store.getState();
+            const componentHTML = renderToString(InitialComponent);
+            const HTML = `<!DOCTYPE html>
                         <html>
                           <head>
                             <meta charset="utf-8">
-                            <title>Redux Demo</title>
+                            <title>Isomorphic Redux Demo</title>
                             <script type="application/javascript">
                               window.__INITIAL_STATE__ = ${JSON.stringify(initialState)};
                             </script>
@@ -41,7 +46,13 @@ app.use((req, res) => {
                           </body>
                       </html>    
                     `;
-        res.end(HTML);
+            return HTML;
+        }
+
+        fetchComponentData(store.dispatch, renderProps.components, renderProps.params)
+            .then(renderView)
+            .then(html => res.end(html))
+            .catch(err => res.end(err.message));
     });
 });
 export default app;
